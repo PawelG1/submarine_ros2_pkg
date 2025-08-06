@@ -1,8 +1,9 @@
+
 # Submarine Control Package
 
 A ROS2 package for controlling a surface/submersible boat on a Raspberry Pi, with support for the Pololu MinIMU-9 v5 IMU sensor.
 
----
+
 
 ## Description
 
@@ -13,7 +14,7 @@ This package provides a complete control system for a surface/submersible boat, 
 - Integration with a Flutter app (in a separate repository)  
 - Advanced IMU data filtering with drift compensation  
 
----
+
 
 ## Components
 
@@ -21,12 +22,11 @@ This package provides a complete control system for a surface/submersible boat, 
 
 This package supports the Pololu MinIMU-9 v5, which includes:
 
-- LSM6DS33 – 3-axis accelerometer + gyroscope  
-- LIS3MDL – 3-axis magnetometer  
-- Communication via I2C  
+- LSM6DS33 – 3-axis accelerometer + gyroscope  data
+- LIS3MDL – 3-axis magnetometer  data
 - Advanced filtering algorithms (complementary filter + low-pass)  
 
-### ROS2 Nodes
+## ROS2 Nodes
 
 1. **imu_publisher** – publishes IMU data  
    - Topic: `/imu/data_raw` (sensor_msgs/Imu)  
@@ -38,7 +38,6 @@ This package supports the Pololu MinIMU-9 v5, which includes:
    - JSON-formatted telemetry data  
    - Rate: 20 Hz  
 
----
 
 ## Hardware Requirements
 
@@ -46,7 +45,6 @@ This package supports the Pololu MinIMU-9 v5, which includes:
 - Pololu MinIMU-9 v5 connected via I2C  
 - I2C interface enabled on the Raspberry Pi  
 
----
 
 ## Installation
 
@@ -83,7 +81,7 @@ sudo apt install ros-humble-desktop
 cd ~/ros2_ws/src
 
 # Clone this repository
-git clone <YOUR_REPO_URL> submarine_pkg
+git clone https://github.com/PawelG1/submarine_ros2_pkg.git submarine_pkg
 
 # Install Python dependencies
 cd submarine_pkg
@@ -97,63 +95,68 @@ colcon build --packages-select submarine_pkg
 # Source the workspace
 source install/setup.bash
 
-4. Calibrate the IMU (IMPORTANT)
+```
 
-Before first use, you must calibrate the sensor:
+# 4. Calibrate the IMU (IMPORTANT)
 
-# Go to the package directory
+Before first use, you should calibrate the sensor:
+
+### Go to the package directory
 cd ~/ros2_ws/src/submarine_pkg/submarine_pkg
 
-# Run calibration (keep the sensor still!)
+### Run calibration (keep the sensor still)
 python3 mini_imu.py
 
-# Calibration takes about 40 seconds (4000 samples)
-# A file named calibration.json will be created automatically
+### Calibration takes about ~40 seconds 
 
-Running
-Launch individual nodes
+### A file named calibration.json will be created automatically
 
-# Terminal 1 – IMU Publisher
-ros2 run submarine_pkg imu_publisher
+	
 
-# Terminal 2 – WebSocket Bridge
-ros2 run submarine_pkg websocket_bridge
+# Running
+## Launch individual nodes
 
-Launch the entire system (recommended)
+### Terminal 1 – IMU Publisher
+	ros2 run submarine_pkg imu_publisher
 
-ros2 launch submarine_pkg submarine_launch.py
+### Terminal 2 – WebSocket Bridge
+	ros2 run submarine_pkg websocket_bridge
 
-Monitoring Data
-Inspect ROS2 topics
+# Launch the entire system (recommended)
 
-# List available topics
-ros2 topic list
+	ros2 launch submarine_pkg submarine_launch.py
 
-# View raw IMU data
-ros2 topic echo /imu/data_raw
+# Monitoring Data
+### Inspect ROS2 topics
+##### List available topics
+	ros2 topic list
 
-# View Euler angles
-ros2 topic echo /imu/euler_angles
+### View raw IMU data
+	ros2 topic echo /imu/data_raw
 
-Test the TCP connection
+### View Euler angles
+	ros2 topic echo /imu/euler_angles
 
-# Connect to the WebSocket bridge
-telnet localhost 8765
+## Test the TCP connection
 
-# You should receive JSON data every 50 ms:
-# {"pitch": -1.23, "roll": 0.45, "speed": 4.0, "battery_voltage": 11.8, "rudder_angle": 1.0, "yaw": 180.0}
+#### Connect to the WebSocket bridge
+	telnet localhost 8765
+
+#### You should receive JSON data every 50 ms:
+	 {"pitch": -1.23, "roll": 0.45, "speed": 4.0, "battery_voltage": 11.8, "rudder_angle": 1.0, "yaw": 180.0}
 
 Configuration
 
     Sampling rate
     Edit imu_publisher.py:
 
-timer_period = 0.02  # 50 Hz (default)
+	timer_period = 0.02  # 50 Hz (default)
 
-WebSocket port
+	WebSocket port
+
 Edit websocket_bridge.py:
 
-self.port = 8765  # change if desired
+	self.port = 8765  # change if desired
 
 IMU filtering parameters
 In mini_imu.py, adjust:
@@ -162,11 +165,15 @@ In mini_imu.py, adjust:
     # closer to 1.0 = more gyroscope influence
     # closer to 0.0 = more accelerometer influence
 
-Flutter App Integration
+---
+# Flutter App Integration
 
-This package works with a Flutter app. Telemetry data is sent as JSON over TCP on port 8765.
-See: https://github.com/PawelG1/ROSBoatControlPanel.git
+#### This package works with a Flutter app. 
+See:  https://github.com/PawelG1/ROSBoatControlPanel.git
 
+#### Telemetry data is sent as JSON over TCP on port 8765.
+
+```
 {
   "pitch": -1.23,
   "roll": 0.45,
@@ -175,24 +182,27 @@ See: https://github.com/PawelG1/ROSBoatControlPanel.git
   "rudder_angle": 1.0,
   "yaw": 180.0
 }
+```
+# Troubleshooting
+## IMU not detected
 
-Troubleshooting
-IMU not detected
-
-# Check I2C connection
+ ### Check I2C connection
+```
 i2cdetect -y 1
+```
+#### You should see:
+ 0x1e – LIS3MDL magnetometer
+ 0x6b – LSM6DS33 accelerometer/gyroscope
 
-# You should see:
-# 0x1e – LIS3MDL magnetometer
-# 0x6b – LSM6DS33 accelerometer/gyroscope
+## I2C permission errors
 
-I2C permission errors
+ Add your user to the i2c group
+	
+	sudo usermod -a -G i2c $USER
+ 
+Then log out and log back in
 
-# Add your user to the i2c group
-sudo usermod -a -G i2c $USER
-# Then log out and log back in
-
-Unstable readings
+## Unstable readings
 
     Ensure calibration was completed
 
@@ -200,12 +210,17 @@ Unstable readings
 
     Tune filtering parameters in mini_imu.py
 
-WebSocket not working
+## WebSocket not working
 
-# Check if the port is in use
-netstat -tulpn | grep :8765
+ Check if the port is in use
+	
+	netstat -tulpn | grep :8765
 
-# Run the node with debug logs
-ros2 run submarine_pkg websocket_bridge --ros-args --log-level debug
+ Run the node with debug logs
 
-Note: This package is a work in progress (WIP). Use at your own risk during water tests!
+	ros2 run submarine_pkg websocket_bridge --ros-args --log-level debug
+
+
+
+
+# Note: This package is a work in progress (WIP). Use at your own risk 
