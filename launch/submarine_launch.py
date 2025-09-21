@@ -27,7 +27,7 @@ def generate_launch_description():
             {'use_gst_timestamps': True},   # bierz timestampy z GStreamera
             {'image_encoding': 'rgb8'},     # pasuje do format=RGB
             {'frame_id': 'camera_frame'}
-        ]
+        ],
         #mienna GSCAM_CONFIG tylko dla tego noda
         additional_env={'GSCAM_CONFIG': "v4l2src device=/dev/video0 io-mode=2 do-timestamp=true ! \
   video/x-raw,format=YUY2 ! \
