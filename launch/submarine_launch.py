@@ -23,9 +23,7 @@ def generate_launch_description():
         name='gscam_publisher',
         output='screen',
         #mienna GSCAM_CONFIG tylko dla tego noda
-        additional_env={'GSCAM_CONFIG': "v4l2src device=/dev/video0 ! \
-  image/jpeg,width=1280,height=720,framerate=30/1 ! \
-  jpegdec ! videoconvert ! video/x-raw,format=RGB"}
+        additional_env={'GSCAM_CONFIG': "v4l2src device=/dev/video0 io-mode=2 do-timestamp=true ! video/x-raw,format=RGB,width=640,height=480,framerate=30/1 ! appsink"}
     )
     
     node4 = Node(
