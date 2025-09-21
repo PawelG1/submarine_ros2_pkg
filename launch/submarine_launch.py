@@ -17,31 +17,42 @@ def generate_launch_description():
         output='screen'
     )
 
-    node3 = Node(
-        package='gscam',
-        executable='gscam_node',
-        name='gscam_publisher',
+    # Node 3: V4L2 camera driver (replaces gscam)
+    # It grabs frames from /dev/video0 using V4L2 legacy driver (bcm2835-v4l2)
+    # and publishes sensor_msgs/Image on /image_raw by default.
+    # We remap to /camera/image_raw to keep a standard topic name for web_video_server.
+    cam_node = Node(
+        package='v4l2_camera',
+        executable='v4l2_camera_node',
+        name='v4l2_camera',
         output='screen',
         parameters=[
-            {'sync_sink': False},           # nie blokuj na sync
-            {'use_gst_timestamps': True},   # bierz timestampy z GStreamera
-            {'image_encoding': 'rgb8'},     # pasuje do format=RGB
-            {'frame_id': 'camera_frame'}
+            {'video_device': '/dev/video0'},    # which device to open
+            {'image_size': [640, 480]},         # width, height
+            {'pixel_format': 'YUYV'},           # source V4L2 pixel format
+            {'output_encoding': 'rgb8'},        # convert to RGB for ROS consumers
+            {'framerate': 30.0}                 # requested FPS
         ],
-        #mienna GSCAM_CONFIG tylko dla tego noda
-        #
+        remappings=[
+            ('image', '/camera/image_raw'),     # publish on /camera/image_raw
+            ('camera_info', '/camera/camera_info')
+        ]
     )
-    
-    node4 = Node(
+
+    # Node 4: web_video_server for HTTP streaming
+    wvs_node = Node(
         package='web_video_server',
         executable='web_video_server',
         name='web_video_server',
-        output='screen'
+        output='screen',
+        parameters=[
+            {'port': 8080}   # change if you need a different port
+        ]
     )
     
     return LaunchDescription([
         node1,
         node2,
-        node3,
-        node4
+        cam_node,
+        wvs_node
     ])
