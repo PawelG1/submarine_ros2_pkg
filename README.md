@@ -87,27 +87,36 @@ sudo apt install ros-humble-desktop
 
 ## for ubuntu 24.04 use newer distro: jazzy
 sudo apt install ros-jazzy-desktop
+```
+---
 
-3. Configure direct Ethernet connection
+## 3. Configure Direct Ethernet Connection
+
 This setup creates a dedicated, cable-only link between the Pi and the laptop.
 Both devices can still access the internet independently via Wi-Fi.
 
-## Raspberry Pi 5 (Ubuntu)
+> **Important**: Check your router's DHCP subnet first (`ip route show` on the laptop).
+> The Ethernet subnet must not overlap with your Wi-Fi subnet.
+> This guide uses `10.0.0.x` — safe for most home networks.
 
-Find the existing Netplan config file:
+---
+
+### Raspberry Pi 5 (Ubuntu)
+
+Find your MAC address and existing Netplan config:
 
 ```bash
-ls /etc/netplan/
-# Look for a file like 50-cloud-init.yaml
+ip link show eth0        # note the MAC address
+ls /etc/netplan/         # look for 50-cloud-init.yaml
 ```
 
-Edit it:
+Edit the Ethernet config file:
 
 ```bash
 sudo nano /etc/netplan/50-cloud-init.yaml
 ```
 
-Replace the `ethernets` section (keep your actual MAC address):
+Replace the contents with (keep your actual MAC address):
 
 ```yaml
 network:
@@ -115,68 +124,115 @@ network:
   ethernets:
     eth0:
       match:
-        macaddress: "XX:XX...XX"  # replace with your MAC
+        macaddress: "XX:XX:XX:XX:XX:XX"  # replace with your MAC
       set-name: "eth0"
       dhcp4: no
-      addresses: [192.168.50.2/24]
+      addresses: [10.0.0.2/24]
 ```
+
+> **Note**: Do not add `renderer: networkd` — it will break Wi-Fi on Ubuntu Desktop.
+> Wi-Fi lives in a separate Netplan file and is unaffected.
 
 Apply:
 
 ```bash
 sudo netplan apply
-# Note: warnings about systemd-networkd are expected on Ubuntu Desktop — not an error.
+# Warnings about systemd-networkd are expected on Ubuntu Desktop — not an error.
 ```
 
 Verify:
 
 ```bash
 ip addr show eth0
-# Expected: inet 192.168.50.2/24
+# Expected: inet 10.0.0.2/24
 ```
 
-Wi-Fi configuration lives in a separate Netplan file and is unaffected.
-
-## Laptop – Linux (NetworkManager)
 ---
-```bash
-# Find the Ethernet interface name (usually eth0 or enp3s0)
-ip link show
 
-# Create a static connection profile
+### Laptop – Linux (NetworkManager)
+
+Find your Ethernet interface name:
+
+```bash
+ip link show
+# Common names: eth0, enp2s0, enp3s0 — use yours below
+```
+
+Create a static profile that does not override the default Wi-Fi route:
+
+```bash
 sudo nmcli connection add \
   type ethernet \
-  ifname eth0 \
+  ifname enp2s0 \
   con-name rpi-link \
-  ipv4.addresses 192.168.50.1/24 \
-  ipv4.method manual
+  ipv4.addresses 10.0.0.1/24 \
+  ipv4.method manual \
+  ipv4.never-default yes
 
 sudo nmcli connection up rpi-link
 ```
 
-Wi-Fi remains managed by NetworkManager and continues to provide internet access.
+The `ipv4.never-default yes` flag ensures internet traffic continues to flow via Wi-Fi.
 
-## Verify the Connection
+To make the profile reconnect automatically after reboot:
+
+```bash
+sudo nmcli connection modify rpi-link connection.autoconnect yes
+```
+
+---
+
+### Laptop – Windows
+
+1. Open **Settings → Network & Internet → Ethernet → Edit**.
+2. Set **IP assignment** to **Manual**.
+3. Enter:
+   - IP address: `10.0.0.1`
+   - Subnet mask: `255.255.255.0`
+   - Gateway: *(leave empty)*
+4. Click **Save**.
+
+---
+
+### SSH Setup (first time only)
+
+On the Raspberry Pi:
+
+```bash
+sudo apt install openssh-server
+sudo systemctl enable ssh
+sudo systemctl start ssh
+```
+
+---
+
+### Verify the Connection
 
 From the laptop:
 
 ```bash
-ping 192.168.50.2
+ping 10.0.0.2
+ssh rpi5@10.0.0.2
 ```
 
 From the Raspberry Pi:
 
 ```bash
-ping 192.168.50.1
-```
-
-SSH into the Pi from the laptop:
-
-```bash
-ssh rpi5@192.168.50.2
+ping 10.0.0.1
 ```
 
 ---
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `ping` fails | Run `ip addr show eth0` on Pi and `ip addr show enp2s0` on laptop — both must have `10.0.0.x` addresses |
+| Internet stops on laptop after connecting cable | Re-run: `sudo nmcli connection modify rpi-link ipv4.never-default yes && sudo nmcli connection up rpi-link` |
+| Wi-Fi stops on Pi after `netplan apply` | Check that `renderer: networkd` is NOT in `50-cloud-init.yaml` |
+| SSH hangs / times out | Verify SSH is running: `sudo systemctl status ssh` |
+| Settings lost after reboot (Pi) | Netplan files persist automatically — verify with `ip addr show eth0` after reboot |
+| Settings lost after reboot (laptop) | Run: `sudo nmcli connection modify rpi-link connection.autoconnect yes` |
 
 ---
 
