@@ -64,6 +64,10 @@ sudo apt install git
 #install colcon
 sudo apt install colcon
 
+#install gscam and web-video-server
+sudo apt install ros-jazzy-gscam
+sudo apt install ros-jazzy-web-video-server
+
 # Enable I2C
 sudo apt install i2c-tools
 
