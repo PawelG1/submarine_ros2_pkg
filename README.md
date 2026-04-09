@@ -41,7 +41,7 @@ This package supports the Pololu MinIMU-9 v5, which includes:
 
 ## Hardware Requirements
 
-- Raspberry Pi (tested on Pi 4)  
+- Raspberry Pi (tested on Pi 5)  
 - Pololu MinIMU-9 v5 connected via I2C  
 - I2C interface enabled on the Raspberry Pi  
 
@@ -51,13 +51,21 @@ This package supports the Pololu MinIMU-9 v5, which includes:
 ### 1. Prepare the Raspberry Pi
 
 ```bash
-# Enable I2C
-sudo raspi-config
-# → Interfacing Options → I2C → Enable
-
 # Install required system packages
 sudo apt update
 sudo apt install python3-pip python3-smbus i2c-tools
+
+#install curl
+sudo apt install curl
+
+#install git
+sudo apt install git
+
+#install colcon
+sudo apt install colcon
+
+# Enable I2C
+sudo apt install i2c-tools
 
 # Verify sensor detection (should see addresses 0x1e and 0x6b)
 i2cdetect -y 1
@@ -65,19 +73,117 @@ i2cdetect -y 1
 2. Install ROS2 (if not already installed)
 
 # Add ROS2 repository
-curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
   -o /usr/share/keyrings/ros-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
   http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
   | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
 
+
 # Install ROS2 Humble
 sudo apt update
 sudo apt install ros-humble-desktop
 
-3. Install the package
+## for ubuntu 24.04 use newer distro: jazzy
+sudo apt install ros-jazzy-desktop
+
+3. Configure direct Ethernet connection
+This setup creates a dedicated, cable-only link between the Pi and the laptop.
+Both devices can still access the internet independently via Wi-Fi.
+
+## Raspberry Pi 5 (Ubuntu)
+
+Find the existing Netplan config file:
+
+```bash
+ls /etc/netplan/
+# Look for a file like 50-cloud-init.yaml
+```
+
+Edit it:
+
+```bash
+sudo nano /etc/netplan/50-cloud-init.yaml
+```
+
+Replace the `ethernets` section (keep your actual MAC address):
+
+```yaml
+network:
+  version: 2
+  ethernets:
+    eth0:
+      match:
+        macaddress: "XX:XX...XX"  # replace with your MAC
+      set-name: "eth0"
+      dhcp4: no
+      addresses: [192.168.50.2/24]
+```
+
+Apply:
+
+```bash
+sudo netplan apply
+# Note: warnings about systemd-networkd are expected on Ubuntu Desktop — not an error.
+```
+
+Verify:
+
+```bash
+ip addr show eth0
+# Expected: inet 192.168.50.2/24
+```
+
+Wi-Fi configuration lives in a separate Netplan file and is unaffected.
+
+## Laptop – Linux (NetworkManager)
+---
+```bash
+# Find the Ethernet interface name (usually eth0 or enp3s0)
+ip link show
+
+# Create a static connection profile
+sudo nmcli connection add \
+  type ethernet \
+  ifname eth0 \
+  con-name rpi-link \
+  ipv4.addresses 192.168.50.1/24 \
+  ipv4.method manual
+
+sudo nmcli connection up rpi-link
+```
+
+Wi-Fi remains managed by NetworkManager and continues to provide internet access.
+
+## Verify the Connection
+
+From the laptop:
+
+```bash
+ping 192.168.50.2
+```
+
+From the Raspberry Pi:
+
+```bash
+ping 192.168.50.1
+```
+
+SSH into the Pi from the laptop:
+
+```bash
+ssh rpi5@192.168.50.2
+```
+
+---
+
+---
+
+4. Install the package
 
 # Navigate to your ROS2 workspace
+mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws/src
 
 # Clone this repository
@@ -85,7 +191,7 @@ git clone https://github.com/PawelG1/submarine_ros2_pkg.git submarine_pkg
 
 # Install Python dependencies
 cd submarine_pkg
-pip3 install smbus2
+sudo apt install python3-smbus2
 
 # Build the package
 cd ~/ros2_ws
