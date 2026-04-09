@@ -34,6 +34,7 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-a
 
 sudo apt update
 sudo apt install ros-jazzy-desktop
+pip install websockets --break-system-packages
 
 # Install additional ROS2 packages
 sudo apt install ros-jazzy-gscam
