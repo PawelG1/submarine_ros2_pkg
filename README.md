@@ -263,6 +263,10 @@ self.port = 8765  # change if desired
 This package works with a Flutter app.
 See: https://github.com/PawelG1/ROSBoatControlPanel.git
 
+For a detailed, step-by-step explanation of the full communication architecture
+(network layer, ROS2 topics, WebSocket bridge, JSON format, video stream) see
+**[COMMUNICATION.md](COMMUNICATION.md)**.
+
 Telemetry data is sent as JSON over TCP on port 8765:
 
 ```json
